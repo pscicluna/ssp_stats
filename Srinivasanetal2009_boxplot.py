@@ -11,8 +11,6 @@ data=Table.read(filename,format="ascii.csv")
 
 #now extract important parameters into numpy arrays
 lum = data['L'].data
-dL= data['dL'].data
-
 
 #bolometric magnitude for entire population
 mbolall=-2.5*np.log10(lum)+4.72

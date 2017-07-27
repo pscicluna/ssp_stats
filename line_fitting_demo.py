@@ -35,6 +35,7 @@ y=data['y']
 yerr=data['sigma_y']
 plt.errorbar(x,y,xerr=xerr,yerr=yerr,fmt='o')
 
+
 A = np.vstack((np.ones_like(x), x)).T
 C = np.diag(yerr * yerr)
 cov = np.linalg.inv(np.dot(A.T, np.linalg.solve(C, A)))
@@ -44,10 +45,10 @@ print("""Least-squares results:
     m = {0} ± {1}
     b = {2} ± {3}
 """.format(m_ls, np.sqrt(cov[1, 1]),b_ls, np.sqrt(cov[0, 0])))
-
+plt.savefig("data.png")
 xplot=np.arange(np.min(x),np.max(x),0.3)
-plt.plot(xplot,xplot*m_ls + b_ls,'--')
-
+plt.plot(xplot,xplot*m_ls + b_ls,'--',linewidth=3)
+plt.savefig("least_square.png")
 import emcee
 
 ndim=2
@@ -66,7 +67,7 @@ def lnprior(theta):
 def lnlike(theta,x,y,yerr):
     m,b=theta
     model=m*x + b 
-    return 0.5 * np.sum((y - model)**2/yerr**2 + np.log(2*np.pi*yerr**2))
+    return -0.5 * np.sum((((y - model)**2)/(yerr**2)))# + np.log(2*np.pi*yerr**2))
 
 def lnprob(theta,x,y,yerr):
     lp=lnprior(theta)
@@ -120,6 +121,22 @@ def mcmc_results(sampler,ndim,percentiles=[16, 50, 84],burnin=200,labels="",pref
     print("MCMC results:")
     for i in range(ndim):
         print("{0}  = {1[1]} + {1[2]} - {1[0]}".format(labels[i],quantiles[i]))
+
+    #now produce output plots of the distribution of lines
+
+    fig=plt.figure()
+    ax=fig.add_subplot(111)
+    xplot=np.arange(-1,7,0.3)
+    try:
+        for m,b in samples[np.random.randint(len(samples),size=1000),0:2]:
+            ax.plot(xplot,m*xplot+b,color="k",alpha=0.02)
+    except:
+        for m,b in samples[np.random.randint(len(samples),size=1000)]:
+            ax.plot(xplot,m*xplot+b,color="k",alpha=0.02)
+    ax.errorbar(x,y,xerr=xerr,yerr=yerr,fmt="ob")
+    ax.set_xlim([-1,7])
+    ax.set_ylim([-10,10])
+    fig.savefig(prefix+"line-mcmc.png")
     #, f_mcmc
     #print("""MCMC result:
     #m = {0[0]} +{0[1]} -{0[2]}
