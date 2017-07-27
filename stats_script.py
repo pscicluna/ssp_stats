@@ -71,17 +71,19 @@ dx24=dataTable['dx24'].data
 #compute bolometric magnitudes from data
 mbol=-2.5*np.log10(L) + 4.72
 #print(mbol)
+bins=np.arange(-8,-3,0.3)
+plt.hist(mbol,bins,log=True)
 bins=np.arange(-8,-3,0.1)
 plt.hist(mbol,bins,log=True)
-bins=np.arange(-8.05,-3.05,0.1)
-plt.hist(mbol,bins,log=True)
+#bins=np.arange(-8.05,-3.05,0.1)
+#plt.hist(mbol,bins,log=True)
 bins=np.arange(-8.0,-3.0,0.03)
 plt.hist(mbol,bins,log=True)
 #plt.set_yscale('log')
 plt.show()
 exit()
-#x24=dataTable['x8'].data
-#dx24=dataTable['dx8'].data
+x24=dataTable['x8'].data
+dx24=dataTable['dx8'].data
 
 #then compute basic statistics for the data
 
@@ -104,13 +106,18 @@ print(sigma,sig_madm)
 #Before we do, we will help out the fitting algorithm by taking the log of the data.
 #This reduces the dynamic range, making the fit more stable over the whole range of the data.
 a=x24 > 0.
+b=np.logical_not(a)
+print(np.sum(b))
+print(np.min(x24[a]))
 xerr=dL[a]/L[a]
 x=np.log10(L[a])
 yerr=dx24[a]/x24[a]
 y=np.log10(x24[a])
 print(x,xerr)
 print(y,yerr)
-
+print(np.max(yerr))
+print(np.sum(yerr >= 3.))
+#exit()
 #First try - simple chi-squared minimisation
 #def chisqfunc((a, b)):
 #    model = a + b*x
@@ -235,7 +242,7 @@ def lnlike(theta,x,y,yerr):
     return -0.5*(np.sum((y-model)**2*inv_sigma2 - np.log(inv_sigma2)))
 
 sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(x, y, yerr))
-results=run_emcee(sampler,pos,ndim,labels,500,prefix="3par")
+#results=run_emcee(sampler,pos,ndim,labels,5000,prefix="3par")
 #exit()
 #And it is also possible to use the uncertainties on both parameters. In this case, however, we completely transform our approach - our likelihood now depends on the displacement of the points from the line. This is most easily described in terms of the angle between the x-axis and the line we are interested in.
 
@@ -251,8 +258,8 @@ def lnlike(theta,x,y,xerr,yerr):
     model=m*x + b #no longer necessary, but I've left it in so you can still see what it is.
     angle=np.arctan(m)
     delta=-1.*np.sin(angle)*x + np.cos(angle)*y + b*np.cos(angle)
-    sigmasq=np.sin(angle)**2 *xerr + np.cos(angle)**2 *yerr
-    return np.sum(0.5* delta / sigmasq)#0.5 * (y - model)**2/yerr**2 + np.log(2*np.pi*yerr**2)
+    sigmasq=xerr*np.sin(angle)**2 + yerr*np.cos(angle)**2
+    return -np.sum(0.5* delta**2 / sigmasq)#0.5 * (y - model)**2/yerr**2 + np.log(2*np.pi*yerr**2)
 
 def lnprob(theta,x,y,xerr,yerr):
     lp=lnprior(theta)
@@ -266,7 +273,7 @@ results=run_emcee(sampler,pos2,ndim,labels,5000,prefix="2d")
 #Finally, we can include intrinsic scatter on *both* of the parameters.
 def lnprior(theta):
     m,b,V=theta
-    if -10. < m < 10. and -100 < b < 100 and -10. < V < 10.:
+    if -20. < m < 10. and -100 < b < 100 and 0. < V < 1e6:# < 100.:
         return 0.0
     return -np.inf
 def lnlike(theta,x,y,xerr,yerr):
@@ -274,8 +281,9 @@ def lnlike(theta,x,y,xerr,yerr):
     model=m*x + b
     angle=np.arctan(m)
     delta=-1.*np.sin(angle)*x + np.cos(angle)*y + b*np.cos(angle)
-    sigmasq=np.sin(angle)**2 *xerr + np.cos(angle)**2 *yerr
-    return np.sum(0.5*(sigmasq + V)) - np.sum(0.5* delta / (sigmasq + V))
+    sigmasq=xerr*np.sin(angle)**2 + yerr*np.cos(angle)**2
+    return -np.sum(0.5*np.log(sigmasq + V)) - np.sum(0.5* delta**2 / (sigmasq + V))
+
 ndim=3
 sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(x, y, xerr, yerr))
 results=run_emcee(sampler,pos3,ndim,labels,5000,prefix="scatter")
