@@ -67,7 +67,7 @@ def lnprior(theta):
 def lnlike(theta,x,y,yerr):
     m,b=theta
     model=m*x + b 
-    return -0.5 * np.sum((((y - model)**2)/(yerr**2)))# + np.log(2*np.pi*yerr**2))
+    return -0.5 * np.sum((((y - model)**2)/(yerr**2)))
 
 def lnprob(theta,x,y,yerr):
     lp=lnprior(theta)
@@ -87,8 +87,6 @@ def run_emcee(sampler,pos,ndim,labels,steps=500,prefix=""):
     
     for i in range(ndim):
         axes[i].plot(sampler.chain[:, :, i].T, color="k", alpha=0.4)
-        #axes[i].yaxis.set_major_locator(MaxNLocator(5))
-        #axes[i].axhline(m_true, color="#888888", lw=2)
         axes[i].set_ylabel(labels[i])
 
     fig.tight_layout(h_pad=0.0)
@@ -137,15 +135,10 @@ def mcmc_results(sampler,ndim,percentiles=[16, 50, 84],burnin=200,labels="",pref
     ax.set_xlim([-1,7])
     ax.set_ylim([-10,10])
     fig.savefig(prefix+"line-mcmc.png")
-    #, f_mcmc
-    #print("""MCMC result:
-    #m = {0[0]} +{0[1]} -{0[2]}
-    #b = {1[0]} +{1[1]} -{1[2]}""".format(m_mcmc, b_mcmc))
-    #    f = {4[0]} +{4[1]} -{4[2]} (truth: {5})
 
 mcmc_results(results,ndim,labels=labels,prefix="2par")
-#exit()
-#But the real power of MCMC comes from its ability to do much more complicated things. It is possible to assume that there is some additional source of scatter that the uncertainties don't properly convey (so called "Intrinsic Scatter"). All that is required is that the likelihood is different
+
+#But the real power of MCMC comes from its ability to do much more complicated things. It is possible to assume that there is some additional source of scatter that the uncertainties don't properly convey (e.g. that the uncertainties are underestimated by some unknown amount). All that is required is that the likelihood is different
 ndim=3
 labels=["$m$","$b$","$f$"]
 pos3=[[m_ls,b_ls,0.] + np.random.randn(ndim) for i in range(nwalkers)]
@@ -165,7 +158,7 @@ def lnlike(theta,x,y,yerr):
 sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(x, y, yerr))
 results=run_emcee(sampler,pos,ndim,labels,1000,prefix="3par")
 mcmc_results(results,ndim,labels=labels,prefix="3par")
-#exit()
+
 #And it is also possible to use the uncertainties on both parameters. In this case, however, we completely transform our approach - our likelihood now depends on the displacement of the points from the line. This is most easily described in terms of the angle between the x-axis and the line we are interested in.
 
 ndim=2
@@ -192,7 +185,8 @@ def lnprob(theta,x,y,xerr,yerr):
 sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(x, y,xerr, yerr))
 results=run_emcee(sampler,pos2,ndim,labels,1000,prefix="2d")
 mcmc_results(results,ndim,labels=labels,prefix="2d")
-#Finally, we can include intrinsic scatter on *both* of the parameters.
+
+#Finally, we can include intrinsic scatter on the data. This is used to capture e.g. that there is some other physical process that is not included in the model than contributes to the data.
 def lnprior(theta):
     m,b,V=theta
     if -10. < m < 10. and -20 < b < 0 and 0. < V < 5:# < 100.:
