@@ -10,31 +10,13 @@ import corner
 from astropy.table import Table,Column
 from scipy.optimize import minimize,curve_fit
 
-#create some synthetic data:
-
-#m_true=2.2178
-#b_true=-7.0696
-
-#N=100
-#x=np.sort(5*np.random.rand(N))
-#xerr = 0.1+0.5*np.random.rand(N)
-#y=m_true*x + b_true*(1+0.3*np.random.randn(N))#(2*np.random.rand(N) - 1) #add intrinsic scatter
-#yerr = 0.1+0.5*np.random.rand(N)
-#x+=xerr*np.random.randn(N)
-#y+=yerr*np.random.randn(N)
-#Table([Column(data=x,name='x'),
-#       Column(data=xerr,name='sigma_x'),
-#       Column(data=y,name='y'),
-#       Column(data=yerr,name='sigma_y')]
-#      ).write("test_data.csv",format="ascii.csv")
-
 data=Table.read("test_data.csv",format="ascii.csv")
 x=data['x']
 xerr=data['sigma_x']
 y=data['y']
 yerr=data['sigma_y']
 plt.errorbar(x,y,xerr=xerr,yerr=yerr,fmt='o')
-
+plt.savefig("data.png")
 
 A = np.vstack((np.ones_like(x), x)).T
 C = np.diag(yerr * yerr)
@@ -45,7 +27,7 @@ print("""Least-squares results:
     m = {0} ± {1}
     b = {2} ± {3}
 """.format(m_ls, np.sqrt(cov[1, 1]),b_ls, np.sqrt(cov[0, 0])))
-plt.savefig("data.png")
+
 xplot=np.arange(np.min(x),np.max(x),0.3)
 plt.plot(xplot,xplot*m_ls + b_ls,'--',linewidth=3)
 plt.savefig("least_square.png")
@@ -104,11 +86,11 @@ def mcmc_results(sampler,ndim,percentiles=[16, 50, 84],burnin=200,labels="",pref
 
     fig = corner.corner(samples, labels=labels[0:ndim])
     fig.savefig(prefix+"line-triangle.png")
-    quantiles=[]
+    credible_interval=[]
     for i in range(ndim):
-        quantiles.append(np.percentile(samples[:,i], percentiles))
-        quantiles[i][2] -= quantiles[i][1]
-        quantiles[i][0] = quantiles[i][1] - quantiles[i][0]
+        credible_interval.append(np.percentile(samples[:,i], percentiles))
+        credible_interval[i][2] -= credible_interval[i][1]
+        credible_interval[i][0] = credible_interval[i][1] - credible_interval[i][0]
         #m_mcmc, b_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),
         #                 zip(*np.percentile(samples, percentiles,
         #                                    axis=0)
@@ -118,7 +100,7 @@ def mcmc_results(sampler,ndim,percentiles=[16, 50, 84],burnin=200,labels="",pref
     #exit()
     print("MCMC results:")
     for i in range(ndim):
-        print("{0}  = {1[1]} + {1[2]} - {1[0]}".format(labels[i],quantiles[i]))
+        print("{0}  = {1[1]} + {1[2]} - {1[0]}".format(labels[i],credible_interval[i]))
 
     #now produce output plots of the distribution of lines
 
